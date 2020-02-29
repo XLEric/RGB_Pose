@@ -25,6 +25,7 @@ example(HandPose Estimation):
 * [train datasets : coco2017/train2017 of person change to voc format(Baiduyun Password: )]()  
 * [Pre-trained model (Baiduyun Password: t80y) ](https://pan.baidu.com/s/1QFAKGIv1zAgDLRyJej8SJA)  
 * cd ./Person_Detect  
+* Set the train parameters in " Person_Detect/cfg/voc_person.data "
 * python train.py  
 
 ### Predict  
