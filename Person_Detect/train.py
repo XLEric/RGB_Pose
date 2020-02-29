@@ -103,6 +103,8 @@ def train(data_cfg ='cfg/voc.data',
         print('\n/************************** load_model *************************/')
         print (finetune_model)
         load_model(model, torch.load(finetune_model))
+    else:
+        print('finetune_model not exist !')
 
     milestones=[int(i) for i in lr_step.split(",")]
     print('milestones : ',milestones)
