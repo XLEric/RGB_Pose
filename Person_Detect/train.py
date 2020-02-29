@@ -219,7 +219,7 @@ def train(data_cfg ='cfg/voc.data',
 
             # Save backup every 10 epochs (optional)
             if epoch > 0 and epoch % 5 == 0:
-                torch.save(chkpt, weights + 'backup%g.pt' % epoch)
+                torch.save(chkpt, weights + 'Detect%g.pt' % epoch)
 
             # Delete checkpoint
             del chkpt
