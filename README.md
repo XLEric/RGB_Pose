@@ -4,7 +4,7 @@ RGB_HandPose
 The project consists of three parts.  
 1、Person Detect  
 example(Person Detect):  
-![person](https://github.com/XiangLiK/RGB_HandPose/raw/master/samples/person.jpg)  
+![person](https://github.com/XiangLiK/RGB_HandPose/raw/master/samples/person.png)  
 2、Hand Detect  
 example(Hand Detect):  
 ![hand](https://github.com/XiangLiK/RGB_HandPose/raw/master/samples/hand.png)   
