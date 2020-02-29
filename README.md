@@ -18,3 +18,15 @@ example(HandPose Estimation):
 * PyTorch 1.1
 * torchvision 0.3.0
 * OpenCV 3.4.0
+
+## Usage  
+### Train
+1、Person Detect  
+* [train datasets : coco2017/train2017 of person (Baiduyun Password: ]()  
+* [Pre-trained model (Baiduyun Password: t80y ](https://pan.baidu.com/s/1QFAKGIv1zAgDLRyJej8SJA)  
+* cd ./Person_Detect  
+* python train.py  
+
+### Predict  
+
+## Notice  
