@@ -84,7 +84,7 @@ def train(data_cfg ='cfg/voc.data',
         a_scalse = 416./img_size
         anchors=[(10,13), (16,30), (33,23), (30,61), (62,45), (59,119), (116,90), (156,198), (373,326)]
         anchors_new = [ (int(anchors[j][0]/a_scalse),int(anchors[j][1]/a_scalse)) for j in range(len(anchors)) ]
-        model = Yolov3(num_classes)
+        model = Yolov3(num_classes,anchors = anchors_new)
         weights = './weights-yolov3/'
     # make dir save model document
     if not os.path.exists(weights):
@@ -140,7 +140,7 @@ def train(data_cfg ='cfg/voc.data',
 
     best_loss = float('inf')
     test_loss = float('inf')
-
+    
     for epoch in range(start_epoch, epochs):
 
         print('')
