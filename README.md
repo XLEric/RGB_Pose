@@ -44,3 +44,7 @@ example(HandPose Estimation):
 * run: python predict.py
 
 ## Notice  
+* I hope that'll be helpful for you.
+
+## Contact  
+* E-mails: 305141918@qq.com
