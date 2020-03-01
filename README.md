@@ -20,8 +20,8 @@ example(HandPose Estimation):
 * OpenCV 3.4.0
 
 ## Usage  
-### Train
-1、Person Detect  
+### Person Detect  
+#### Train  
 * [detect_person_datasets : coco2017/train2017 of person change to voc format(Baiduyun Password: x9u4 )](https://pan.baidu.com/s/1Z7RBbrmR9iRK61-RTy5E6A)  
 * [Pre-trained model (Baiduyun Password: t80y) ](https://pan.baidu.com/s/1QFAKGIv1zAgDLRyJej8SJA)  
 * cd ./Person_Detect  
@@ -32,5 +32,14 @@ example(HandPose Estimation):
 * python train.py  
 
 ### Predict  
+* set predict.py params(  
+  model_path : 检测模型路径
+  images_path : 测试文件夹  
+  model_cfg : 模型类型  
+  voc_config : 模型相关配置文件  
+  img_size : 图像尺寸    
+  conf_thres : 物体检测置信度  
+  nms_thres ：nms阈值)  
+* run: python predict.py
 
 ## Notice  

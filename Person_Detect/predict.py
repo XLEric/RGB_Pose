@@ -127,7 +127,7 @@ if __name__ == '__main__':
     model_cfg = 'yolo' # 模型类型
     voc_config = './cfg/voc_person.data' # 模型相关配置文件
     img_size = 416 # 图像尺寸
-    conf_thres = 0.3# 检测置信度
+    conf_thres = 0.3# 物体检测置信度
     nms_thres = 0.4 # nms 阈值
 
     with torch.no_grad():#设置无梯度运行
