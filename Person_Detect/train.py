@@ -81,6 +81,9 @@ def train(data_cfg ='cfg/voc.data',
         model = Yolov3Tiny(num_classes,anchors = anchors_new)
         weights = './weights-yolov3-tiny/'
     else:
+        a_scalse = 416./img_size
+        anchors=[(10,13), (16,30), (33,23), (30,61), (62,45), (59,119), (116,90), (156,198), (373,326)]
+        anchors_new = [ (int(anchors[j][0]/a_scalse),int(anchors[j][1]/a_scalse)) for j in range(len(anchors)) ]
         model = Yolov3(num_classes)
         weights = './weights-yolov3/'
     # make dir save model document
