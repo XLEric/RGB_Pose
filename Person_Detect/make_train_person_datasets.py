@@ -46,8 +46,8 @@ if __name__ == "__main__":
     for file in os.listdir(path_data):
 
         if os.path.splitext(file)[1]==".jpg" or os.path.splitext(file)[1]==".png":
-            if idx >= 2000:
-                break
+            # if idx >= 2000:
+            #     break
             image_path_o =  path_data + file
             xml_path_o = image_path_o.replace('.jpg','.xml').replace('.png','.xml')
             image_path = save_images_path + file
