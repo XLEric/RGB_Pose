@@ -31,7 +31,7 @@ example(HandPose Estimation):
 * Set the train parameters in " Person_Detect/cfg/voc_person.data "
 * python train.py  
 
-### Predict  
+#### Predict  
 * set predict.py params(  
   model_path : 检测模型路径
   images_path : 测试文件夹  
