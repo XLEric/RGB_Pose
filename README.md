@@ -51,8 +51,13 @@ example(HandPose Estimation):
 * train.py ,change 'LoadImagesAndLabels' 'path_' for your path of the datasets  
 * run:python train.py  
 #### Predict
-* predict.py ,change 'model_path' for your path of model ,change 'img_dir' for your path of test datesets
+* predict.py ,change 'model_path' for your path of model ,change 'img_dir' for your path of test datasets
 * run: python predict.py  
+
+## Third-party resources  
+* https://github.com/TencentYoutuResearch/ObjectDetection-OneStageDet/blob/master/yolo/vedanet/network/backbone/brick/darknet53.py  
+* https://github.com/ultralytics/yolov3/blob/master/models.py  
+* https://github.com/xingyizhou/CenterNet  
 
 ## Notice  
 * I hope that'll be helpful for you.
