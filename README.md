@@ -43,6 +43,17 @@ example(HandPose Estimation):
   nms_thres ：nms阈值)  
 * run: python predict.py
 
+### Hand Detect  
+* Hand Detect - CenterNet , But only support resnet backbone  
+#### Train  
+* [detect_hand_datasets : it use person's image of crop from coco2017/train2017.It label for ourself, change to voc format(Baiduyun Password:)]()  
+* release detect_hand_datasets  
+* train.py ,change 'LoadImagesAndLabels' 'path_' for your path of the datasets  
+* run:python train.py  
+#### Predict
+* predict.py ,change 'model_path' for your path of model ,change 'img_dir' for your path of test datesets
+* run: python predict.py  
+
 ## Notice  
 * I hope that'll be helpful for you.
 
