@@ -54,6 +54,9 @@ example(HandPose Estimation):
 * predict.py ,change 'model_path' for your path of model ,change 'img_dir' for your path of test datasets
 * run: python predict.py  
 
+### HandPose Estimation  
+* Updating ~  
+
 ## Third-Party Resources  
 * https://github.com/TencentYoutuResearch/ObjectDetection-OneStageDet/blob/master/yolo/vedanet/network/backbone/brick/darknet53.py  
 * https://github.com/ultralytics/yolov3/blob/master/models.py  
