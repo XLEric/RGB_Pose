@@ -58,6 +58,7 @@ example(HandPose Estimation):
 * Updating ~  
 
 ## Third-Party Resources  
+* http://cocodataset.org/
 * https://github.com/TencentYoutuResearch/ObjectDetection-OneStageDet/blob/master/yolo/vedanet/network/backbone/brick/darknet53.py  
 * https://github.com/ultralytics/yolov3/blob/master/models.py  
 * https://github.com/xingyizhou/CenterNet  

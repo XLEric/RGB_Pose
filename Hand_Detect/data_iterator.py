@@ -81,6 +81,11 @@ class LoadImagesAndLabels(data.Dataset):
             xml_path_ = path_ + file_
             img_path_ = path_ + file_.replace('.xml','.jpg')
 
+            # print(xml_path_)
+            # print(img_path_)
+            if not os.path.exists(img_path_):
+                continue
+
             list_x = get_xml_msg(xml_path_)
             if len(list_x)>0:
                 anno_list.append(list_x)

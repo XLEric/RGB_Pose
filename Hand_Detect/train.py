@@ -67,7 +67,7 @@ def main(opt):
         pin_memory=False,
         drop_last=True
         )
-
+    print('\n/***********************************/\n')
     print('Starting training...')
     print("using arch      : {}".format(model_arch))
     print('num_classes     : {}'.format(num_classes))
@@ -76,6 +76,7 @@ def main(opt):
     print('learning_rate   : {}'.format(learning_rate_))
     print('lr_step         : {}'.format(lr_step_))
     print('path_load_model : {}'.format(path_load_model_))
+    print('dataset len     : {}'.format(train_dataset.__len__()))
 
     for epoch in range(start_epoch + 1, opt.num_epochs + 1):
         log_dict_train, _ = trainer.train(epoch, train_loader)
