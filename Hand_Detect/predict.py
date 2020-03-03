@@ -262,7 +262,7 @@ def eval(model_path,img_dir,gt_annot_path):
 def demo(model_path,img_dir):
 	print('\n/****************** Demo ****************/\n')
 	flag_write_xml = False
-	path_det_ = '../evaluation/det_xml/'
+	path_det_ = './det_xml/'
 	if os.path.exists(path_det_):
 		shutil.rmtree(path_det_)
 	print('remove detect document ~')
@@ -325,7 +325,7 @@ if __name__ == '__main__':
 	gt_annot_path = './hand_detect_gt.json'
 	img_dir = '../done/'# 测试集
 
-	Eval = True
+	Eval = False
 
 	if Eval:
 		eval(model_path,img_dir,gt_annot_path)
