@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf8 -*-
 import sys
 from xml.etree import ElementTree
@@ -174,4 +173,3 @@ class PascalVocReader:
                 difficult = bool(int(object_iter.find('difficult').text))
             self.addShape(label, bndbox, difficult)
         return True
-
