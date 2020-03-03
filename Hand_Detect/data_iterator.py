@@ -82,8 +82,9 @@ class LoadImagesAndLabels(data.Dataset):
             img_path_ = path_ + file_.replace('.xml','.jpg')
 
             list_x = get_xml_msg(xml_path_)
-            anno_list.append(list_x)
-            img_list.append(img_path_)
+            if len(list_x)>0:
+                anno_list.append(list_x)
+                img_list.append(img_path_)
 
     self.img_list =img_list
     self.anno_list =anno_list
