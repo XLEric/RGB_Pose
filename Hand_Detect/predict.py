@@ -10,12 +10,52 @@ import numpy as np
 import time
 import shutil
 import torch
-
+import json
+import matplotlib.pyplot as plt
 from data_iterator import LoadImagesAndLabels
 from models.decode import ctdet_decode
 from utils.model_utils import load_model
 from utils.post_process import ctdet_post_process
 from msra_resnet import get_pose_net as resnet
+from xml_writer import PascalVocWriter
+
+class NpEncoder(json.JSONEncoder):
+	def default(self, obj):
+		if isinstance(obj, np.integer):
+			return int(obj)
+		elif isinstance(obj, np.floating):
+			return float(obj)
+		elif isinstance(obj, np.ndarray):
+			return obj.tolist()
+		else:
+			return super(NpEncoder, self).default(obj)
+
+# reference https://zhuanlan.zhihu.com/p/60707912
+def draw_pr(coco_eval, label="192_288"):
+    pr_array1 = coco_eval.eval["precision"][0, :, 0, 0, 2]
+    score_array1 = coco_eval.eval['scores'][0, :, 0, 0, 2]
+
+    x = np.arange(0.0, 1.01, 0.01)
+    plt.xlabel("recall")
+    plt.ylabel("precision")
+    plt.xlim(0, 1.0)
+    plt.ylim(0, 1.0)
+    plt.grid(True)
+
+    plt.plot(x, pr_array1, "b-", label=label)
+    for i in range(len(pr_array1)):
+        print("Confidence: {:.2f}, Precision: {:.2f}, Recall: {:.2f}".format(score_array1[i], pr_array1[i], x[i]))
+    plt.legend(loc="lower left")
+    plt.savefig("one_p_r.png")
+
+def write_bbox_label(writer_x,img_shape,bbox,label):
+	h,w = img_shape
+	x1,y1,x2,y2 = bbox
+	x1 = min(w, max(0, x1))
+	x2 = min(w, max(0, x2))
+	y1 = min(h, max(0, y1))
+	y2 = min(h, max(0, y2))
+	writer_x.addBndBox(int(x1), int(y1), int(x2), int(y2), label, 0)
 
 def letterbox(img, height=512, color=(31, 31, 31)):
     # Resize a rectangular image to a padded square
@@ -43,7 +83,7 @@ class CtdetDetector(object):
         model_arch = 'resnet_34'
         if "resnet_" in model_arch:
             num_layer = int(model_arch.split("_")[1])
-            self.model = resnet(num_layers=num_layer, heads={'hm': self.num_classes, 'wh': 2, 'reg': 2}, head_conv=64, pretrained=True)  # res_18
+            self.model = resnet(num_layers=num_layer, heads={'hm': self.num_classes, 'wh': 2, 'reg': 2}, head_conv=64, pretrained=False)  # res_18
         else:
             print("model_arch error:", model_arch)
 
@@ -75,7 +115,7 @@ class CtdetDetector(object):
         images = torch.from_numpy(images)
         torch.cuda.synchronize()
         s2 = time.time()
-        print("pre_process:".format(s2 -s1))
+        # print("pre_process:".format(s2 -s1))
         meta = {'c': c, 's': s, 'out_height': inp_height // self.down_ratio, 'out_width': inp_width // self.down_ratio}
         return images, meta
 
@@ -87,9 +127,9 @@ class CtdetDetector(object):
             output = self.model(images)[-1]
             torch.cuda.synchronize()
             s2 = time.time()
-            for k, v in output.items():
-                print("output:", k, v.size())
-            print("inference time:", s2 - s1)
+            # for k, v in output.items():
+            #     print("output:", k, v.size())
+            # print("inference time:", s2 - s1)
             hm = output['hm'].sigmoid_()
             wh = output['wh']
 
@@ -109,11 +149,12 @@ class CtdetDetector(object):
             dets[0][j][:, :4] /= scale
         torch.cuda.synchronize()
         s2 = time.time()
-        print("post_process:", s2-s1)
+        # print("post_process:", s2-s1)
 
         return dets[0]
 
     def work(self, image):
+
         img_h, img_w = image.shape[0], image.shape[1]
         torch.cuda.synchronize()
         s1 = time.time()
@@ -140,55 +181,153 @@ class CtdetDetector(object):
                     conf = bbox[4]
                     cls = self.class_name[j]
                     final_result.append((cls, conf, [x1, y1, x2, y2]))
-        print("cost time: ", time.time() - s1)
+        # print("cost time: ", time.time() - s1)
         return final_result,hm
+def eval(model_path,img_dir,gt_annot_path):
+	output = "output"
+	if os.path.exists(output):
+		shutil.rmtree(output)
+	os.mkdir(output)
+	os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+	if LoadImagesAndLabels.num_classes <= 5:
+		colors = [(55,55,250), (255,155,50), (128,0,0), (255,0,255), (128,255,128), (255,0,0)]
+	else:
+		colors = [(v // 32 * 64 + 64, (v // 8) % 4 * 64, v % 8 * 32) for v in range(1, LoadImagesAndLabels.num_classes + 1)][::-1]
+	detector = CtdetDetector(model_path)
+
+	print('\n/****************** Eval ****************/\n')
+	import tqdm
+	import pycocotools.coco as coco
+	from pycocotools.cocoeval import COCOeval
+
+	print("gt path: {}".format(gt_annot_path))
+	result_file = '../evaluation/instances_det.json'
+	coco = coco.COCO(gt_annot_path)
+	images = coco.getImgIds()
+	num_samples = len(images)
+	print('find {} samples in {}'.format(num_samples, gt_annot_path))
+	#------------------------------------------------
+	coco_res = []
+	f = open("result.txt", "w")
+	for index in tqdm.tqdm(range(num_samples)):
+		img_id = images[index]
+		file_name = coco.loadImgs(ids=[img_id])[0]['file_name']
+		image_path = os.path.join(img_dir, file_name)
+		img = cv2.imread(image_path)
+		results,hm = detector.work(img)# 返回检测结果和置信度图
+		if len(results) == 0:
+			f.write(os.path.basename(image_path) + "\n")
+		class_num = {}
+		for res in results:
+			cls, conf, bbox = res[0], res[1], res[2]
+			f.write(" ".join([file_name, cls, str(conf), str(bbox[0]), str(bbox[1]), str(bbox[2]), str(bbox[3])]) + "\n")
+			coco_res.append({'bbox': [bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]], 'category_id':
+				LoadImagesAndLabels.class_name.index(cls), 'image_id': img_id, 'score': conf})
+			if cls in class_num:
+				class_num[cls] += 1
+			else:
+				class_num[cls] = 1
+			color = colors[LoadImagesAndLabels.class_name.index(cls)]
+			# 绘制目标框
+			cv2.rectangle(img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color, 2)
+			# 绘制标签&置信度
+			txt = '{}:{:.1f}'.format(cls, conf)
+			font = cv2.FONT_HERSHEY_SIMPLEX
+			txt_size = cv2.getTextSize(txt, font, 0.5, 2)[0]
+			cv2.rectangle(img, (bbox[0], bbox[1] - txt_size[1] - 2), (bbox[0] + txt_size[0], bbox[1] - 2), color, -1)
+			cv2.putText(img, txt, (bbox[0], bbox[1] - 2), font, 0.5, (255, 255, 255), thickness=1, lineType=cv2.LINE_AA)
+
+		cv2.imwrite(output + "/" + os.path.basename(image_path), img)
+		cv2.namedWindow("heatmap", 0)
+		cv2.imshow("heatmap", np.hstack(hm[0].cpu().numpy()))
+		cv2.namedWindow("img", 0)
+		cv2.imshow("img", img)
+		key = cv2.waitKey(1)
+	#-------------------------------------------------
+	f.close()
+	with open(result_file, 'w') as f_dump:
+		json.dump(coco_res, f_dump, cls=NpEncoder)
+
+	cocoDt = coco.loadRes(result_file)
+	cocoEval = COCOeval(coco, cocoDt, 'bbox')
+	# cocoEval.params.imgIds  = imgIds
+	cocoEval.params.catIds = [1] # 1代表’Hand’类，你可以根据需要增减类别
+	cocoEval.evaluate()
+	print('\n/***************************/\n')
+	cocoEval.accumulate()
+	print('\n/***************************/\n')
+	cocoEval.summarize()
+	draw_pr(cocoEval)
 
 def demo(model_path,img_dir):
-    output = "output"
-    if os.path.exists(output):
-        shutil.rmtree(output)
-    os.mkdir(output)
-    os.environ['CUDA_VISIBLE_DEVICES'] = "0"
-    if LoadImagesAndLabels.num_classes <= 5:
-        colors = [(255,155,50), (0,0, 255), (128,0,0), (255,0,255), (128,255,128), (255,0,0)]
-    else:
-        colors = [(v // 32 * 64 + 64, (v // 8) % 4 * 64, v % 8 * 32) for v in range(1, LoadImagesAndLabels.num_classes + 1)][::-1]
-    detector = CtdetDetector(model_path)
+	print('\n/****************** Demo ****************/\n')
+	flag_write_xml = False
+	path_det_ = '../evaluation/det_xml/'
+	if os.path.exists(path_det_):
+		shutil.rmtree(path_det_)
+	print('remove detect document ~')
+	if not os.path.exists(path_det_):
+		os.mkdir(path_det_)
 
-    img_list = glob.glob(os.path.join(img_dir, "*.jpg"))
-    print("image num:", len(img_list))
-    for image_path in img_list:
-        print("--------------------")
-        img = cv2.imread(image_path)
-        results,hm = detector.work(img)# 返回检测结果和置信度图
-        print(results)
-        class_num = {}
-        for res in results:
-            cls, conf, bbox = res[0], res[1], res[2]
-            if cls in class_num:
-                class_num[cls] += 1
-            else:
-                class_num[cls] = 1
-            color = colors[LoadImagesAndLabels.class_name.index(cls)]
-            # 绘制目标框
-            cv2.rectangle(img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color, 2)
-            # 绘制标签&置信度
-            txt = '{}:{:.1f}'.format(cls, conf)
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            txt_size = cv2.getTextSize(txt, font, 0.5, 2)[0]
-            cv2.rectangle(img, (bbox[0], bbox[1] - txt_size[1] - 2), (bbox[0] + txt_size[0], bbox[1] - 2), color, -1)
-            cv2.putText(img, txt, (bbox[0], bbox[1] - 2), font, 0.5, (255, 255, 255), thickness=1, lineType=cv2.LINE_AA)
+	output = "output"
+	if os.path.exists(output):
+		shutil.rmtree(output)
+	os.mkdir(output)
+	os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+	if LoadImagesAndLabels.num_classes <= 5:
+		colors = [(55,55,250), (255,155,50), (128,0,0), (255,0,255), (128,255,128), (255,0,0)]
+	else:
+		colors = [(v // 32 * 64 + 64, (v // 8) % 4 * 64, v % 8 * 32) for v in range(1, LoadImagesAndLabels.num_classes + 1)][::-1]
+	detector = CtdetDetector(model_path)
+	for file_ in os.listdir(img_dir):
+		if '.xml' in file_:
+			continue
+		print("--------------------")
+		img = cv2.imread(img_dir + file_)
+		if flag_write_xml:
+			shutil.copyfile(img_dir + file_,path_det_+file_)
+		if flag_write_xml:
+			img_h, img_w = img.shape[0],img.shape[1]
+			writer = PascalVocWriter("./",file_, (img_h, img_w, 3), localImgPath="./", usrname="RGB_HandPose_EVAL")
+		results,hm = detector.work(img)# 返回检测结果和置信度图
+		print(results)
+		class_num = {}
+		for res in results:
+			cls, conf, bbox = res[0], res[1], res[2]
+			if flag_write_xml:
+				write_bbox_label(writer,(img_h,img_w),bbox,cls)
+			if cls in class_num:
+				class_num[cls] += 1
+			else:
+				class_num[cls] = 1
+			color = colors[LoadImagesAndLabels.class_name.index(cls)]
+			# 绘制目标框
+			cv2.rectangle(img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color, 2)
+			# 绘制标签&置信度
+			txt = '{}:{:.1f}'.format(cls, conf)
+			font = cv2.FONT_HERSHEY_SIMPLEX
+			txt_size = cv2.getTextSize(txt, font, 0.5, 2)[0]
+			cv2.rectangle(img, (bbox[0], bbox[1] - txt_size[1] - 2), (bbox[0] + txt_size[0], bbox[1] - 2), color, -1)
+			cv2.putText(img, txt, (bbox[0], bbox[1] - 2), font, 0.5, (255, 255, 255), thickness=1, lineType=cv2.LINE_AA)
+		if flag_write_xml:
+			writer.save(targetFile = path_det_+file_.replace('.jpg','.xml'))
 
-        cv2.namedWindow("heatmap", 0)
-        cv2.imshow("heatmap", np.hstack(hm[0].cpu().numpy()))
-        cv2.namedWindow("img", 0)
-        cv2.imshow("img", img)
-        key = cv2.waitKey(0)
-        if key == 27:
-           break
-
+		cv2.namedWindow("heatmap", 0)
+		cv2.imshow("heatmap", np.hstack(hm[0].cpu().numpy()))
+		cv2.namedWindow("img", 0)
+		cv2.imshow("img", img)
+		key = cv2.waitKey(1)
+		if key == 27:
+			break
 
 if __name__ == '__main__':
-    model_path = './model_save/model_hand_last.pth'# 模型路径
-    img_dir = './example_hand/'# 测试集
-    demo(model_path,img_dir)
+	model_path = './model_save/model_hand_last.pth'# 模型路径
+	gt_annot_path = './hand_detect_gt.json'
+	img_dir = '../done/'# 测试集
+
+	Eval = True
+
+	if Eval:
+		eval(model_path,img_dir,gt_annot_path)
+	else:
+		demo(model_path,img_dir)

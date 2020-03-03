@@ -77,14 +77,28 @@ class LoadImagesAndLabels(data.Dataset):
     img_list = []
     anno_list = []
     for file_ in os.listdir(path_):
+        # if '.jpg' in file_:
+        #     img_path_ = path_ + file_
+        #     xml_path_ = path_ + file_.replace('.jpg','.xml')
+        #     if not os.path.exists(xml_path_):
+        #         os.remove(img_path_)
+        #         os.remove(xml_path_)
+        #         print('xxxxx')
+        #         continue
+        #     else:
+        #         print('aaaa')
+        #     continue
+
         if '.xml' in file_:
             xml_path_ = path_ + file_
             img_path_ = path_ + file_.replace('.xml','.jpg')
 
             # print(xml_path_)
             # print(img_path_)
-            if not os.path.exists(img_path_):
-                continue
+            # if not os.path.exists(img_path_):
+            #     # os.remove(img_path_)
+            #     # os.remove(xml_path_)
+            #     continue
 
             list_x = get_xml_msg(xml_path_)
             if len(list_x)>0:
