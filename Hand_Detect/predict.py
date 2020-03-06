@@ -256,20 +256,20 @@ def eval(model_arch,model_path,img_dir,gt_annot_path):
 	print('find {} samples in {}'.format(num_samples, gt_annot_path))
 	#------------------------------------------------
 	coco_res = []
-	f = open("result.txt", "w")
+	# f = open("result.txt", "w")
 	for index in tqdm.tqdm(range(num_samples)):
 		img_id = images[index]
 		file_name = coco.loadImgs(ids=[img_id])[0]['file_name']
 		image_path = os.path.join(img_dir, file_name)
 		img = cv2.imread(image_path)
 		results,hm = detector.work(img)# 返回检测结果和置信度图
-		if len(results) == 0:
-			f.write(os.path.basename(image_path) + "\n")
+		# if len(results) == 0:
+		# 	f.write(os.path.basename(image_path) + "\n")
 
 		class_num = {}
 		for res in results:
 			cls, conf, bbox = res[0], res[1], res[2]
-			f.write(" ".join([file_name, cls, str(conf), str(bbox[0]), str(bbox[1]), str(bbox[2]), str(bbox[3])]) + "\n")
+			# f.write(" ".join([file_name, cls, str(conf), str(bbox[0]), str(bbox[1]), str(bbox[2]), str(bbox[3])]) + "\n")
 			coco_res.append({'bbox': [bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]], 'category_id':
 				LoadImagesAndLabels.class_name.index(cls), 'image_id': img_id, 'score': conf})
 			if cls in class_num:
@@ -290,7 +290,7 @@ def eval(model_arch,model_path,img_dir,gt_annot_path):
 		cv2.imshow("img", img)
 		key = cv2.waitKey(1)
 	#-------------------------------------------------
-	f.close()
+	# f.close()
 	with open(result_file, 'w') as f_dump:
 		json.dump(coco_res, f_dump, cls=NpEncoder)
 
@@ -384,7 +384,7 @@ if __name__ == '__main__':
 
 	nms_flag = True
 
-	Eval = False
+	Eval = True
 
 	if Eval:
 		eval(model_arch,model_path,img_dir,gt_annot_path)
