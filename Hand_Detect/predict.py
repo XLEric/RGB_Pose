@@ -71,8 +71,56 @@ def letterbox(img, height=512, color=(31, 31, 31)):
     img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)  # padded square
     return img
 
+def py_cpu_nms(dets, thresh):
+    """Pure Python NMS baseline."""
+    #x1、y1、x2、y2、以及score赋值
+    x1 = dets[:, 0]
+    y1 = dets[:, 1]
+    x2 = dets[:, 2]
+    y2 = dets[:, 3]
+    scores = dets[:, 4]
+
+    #每一个检测框的面积
+    areas = (x2 - x1 + 1) * (y2 - y1 + 1)
+    #按照score置信度降序排序
+    order = scores.argsort()[::-1]
+
+    keep = [] #保留的结果框集合
+    while order.size > 0:
+        i = order[0]
+        keep.append(i) #保留该类剩余box中得分最高的一个
+        #得到相交区域,左上及右下
+        xx1 = np.maximum(x1[i], x1[order[1:]])
+        yy1 = np.maximum(y1[i], y1[order[1:]])
+        xx2 = np.minimum(x2[i], x2[order[1:]])
+        yy2 = np.minimum(y2[i], y2[order[1:]])
+
+        #计算相交的面积,不重叠时面积为0
+        w = np.maximum(0.0, xx2 - xx1 + 1)
+        h = np.maximum(0.0, yy2 - yy1 + 1)
+        inter = w * h
+        #计算IoU：重叠面积 /（面积1+面积2-重叠面积）
+        ovr = inter / (areas[i] + areas[order[1:]] - inter)
+        #保留IoU小于阈值的box
+        inds = np.where(ovr <= thresh)[0]
+        order = order[inds + 1] #因为ovr数组的长度比order数组少一个,所以这里要将所有下标后移一位
+
+    return keep
+def plot_one_box(x, img, color=None, label=None, line_thickness=None):
+    # Plots one bounding box on image img
+    tl = line_thickness or round(0.002 * max(img.shape[0:2])) + 1  # line thickness
+    color = color or [random.randint(0, 255) for _ in range(3)]# color
+    c1, c2 = (int(x[0]), int(x[1])), (int(x[2]), int(x[3]))
+    cv2.rectangle(img, c1, c2, color, thickness=tl)
+    if label:
+        tf = max(tl - 2, 1)  # font thickness
+        t_size = cv2.getTextSize(label, 0, fontScale=tl / 3, thickness=tf)[0] # label size
+        c2 = c1[0] + t_size[0], c1[1] - t_size[1] - 3 # 字体的bbox
+        cv2.rectangle(img, c1, c2, color, -1)  # filled rectangle
+        cv2.putText(img, label, (c1[0], c1[1] - 2), 0, tl / 4, [225, 255, 255],\
+        thickness=tf, lineType=cv2.LINE_AA)
 class CtdetDetector(object):
-    def __init__(self,model_path):
+    def __init__(self,model_arch,model_path):
         if torch.cuda.is_available():
             self.device = torch.device("cuda:0")
         else:
@@ -80,13 +128,13 @@ class CtdetDetector(object):
 
         self.num_classes = LoadImagesAndLabels.num_classes
         print('Creating model...')
-        model_arch = 'resnet_34'
+
+        head_conv_ =64
         if "resnet_" in model_arch:
             num_layer = int(model_arch.split("_")[1])
-            self.model = resnet(num_layers=num_layer, heads={'hm': self.num_classes, 'wh': 2, 'reg': 2}, head_conv=64, pretrained=False)  # res_18
+            self.model = resnet(num_layers=num_layer, heads={'hm': self.num_classes, 'wh': 2, 'reg': 2}, head_conv=head_conv_, pretrained=False)  # res_18
         else:
             print("model_arch error:", model_arch)
-
         self.model = load_model(self.model, model_path)
         self.model = self.model.to(self.device)
         self.model.eval()
@@ -183,7 +231,7 @@ class CtdetDetector(object):
                     final_result.append((cls, conf, [x1, y1, x2, y2]))
         # print("cost time: ", time.time() - s1)
         return final_result,hm
-def eval(model_path,img_dir,gt_annot_path):
+def eval(model_arch,model_path,img_dir,gt_annot_path):
 	output = "output"
 	if os.path.exists(output):
 		shutil.rmtree(output)
@@ -193,7 +241,7 @@ def eval(model_path,img_dir,gt_annot_path):
 		colors = [(55,55,250), (255,155,50), (128,0,0), (255,0,255), (128,255,128), (255,0,0)]
 	else:
 		colors = [(v // 32 * 64 + 64, (v // 8) % 4 * 64, v % 8 * 32) for v in range(1, LoadImagesAndLabels.num_classes + 1)][::-1]
-	detector = CtdetDetector(model_path)
+	detector = CtdetDetector(model_arch,model_path)
 
 	print('\n/****************** Eval ****************/\n')
 	import tqdm
@@ -217,6 +265,7 @@ def eval(model_path,img_dir,gt_annot_path):
 		results,hm = detector.work(img)# 返回检测结果和置信度图
 		if len(results) == 0:
 			f.write(os.path.basename(image_path) + "\n")
+
 		class_num = {}
 		for res in results:
 			cls, conf, bbox = res[0], res[1], res[2]
@@ -228,14 +277,11 @@ def eval(model_path,img_dir,gt_annot_path):
 			else:
 				class_num[cls] = 1
 			color = colors[LoadImagesAndLabels.class_name.index(cls)]
-			# 绘制目标框
-			cv2.rectangle(img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color, 2)
+
 			# 绘制标签&置信度
-			txt = '{}:{:.1f}'.format(cls, conf)
-			font = cv2.FONT_HERSHEY_SIMPLEX
-			txt_size = cv2.getTextSize(txt, font, 0.5, 2)[0]
-			cv2.rectangle(img, (bbox[0], bbox[1] - txt_size[1] - 2), (bbox[0] + txt_size[0], bbox[1] - 2), color, -1)
-			cv2.putText(img, txt, (bbox[0], bbox[1] - 2), font, 0.5, (255, 255, 255), thickness=1, lineType=cv2.LINE_AA)
+
+			label_ = '{}:{:.1f}'.format(cls, conf)
+			plot_one_box(bbox, img, color=color, label=label_, line_thickness=2)
 
 		cv2.imwrite(output + "/" + os.path.basename(image_path), img)
 		cv2.namedWindow("heatmap", 0)
@@ -259,7 +305,7 @@ def eval(model_path,img_dir,gt_annot_path):
 	cocoEval.summarize()
 	draw_pr(cocoEval)
 
-def demo(model_path,img_dir):
+def inference(model_arch,nms_flag,model_path,img_dir):
 	print('\n/****************** Demo ****************/\n')
 	flag_write_xml = False
 	path_det_ = './det_xml/'
@@ -278,7 +324,7 @@ def demo(model_path,img_dir):
 		colors = [(55,55,250), (255,155,50), (128,0,0), (255,0,255), (128,255,128), (255,0,0)]
 	else:
 		colors = [(v // 32 * 64 + 64, (v // 8) % 4 * 64, v % 8 * 32) for v in range(1, LoadImagesAndLabels.num_classes + 1)][::-1]
-	detector = CtdetDetector(model_path)
+	detector = CtdetDetector(model_arch,model_path)
 	for file_ in os.listdir(img_dir):
 		if '.xml' in file_:
 			continue
@@ -290,8 +336,9 @@ def demo(model_path,img_dir):
 			img_h, img_w = img.shape[0],img.shape[1]
 			writer = PascalVocWriter("./",file_, (img_h, img_w, 3), localImgPath="./", usrname="RGB_HandPose_EVAL")
 		results,hm = detector.work(img)# 返回检测结果和置信度图
-		print(results)
+		print('model_arch - {} : {}'.format(model_arch,results))
 		class_num = {}
+		nms_dets_ = []
 		for res in results:
 			cls, conf, bbox = res[0], res[1], res[2]
 			if flag_write_xml:
@@ -301,16 +348,25 @@ def demo(model_path,img_dir):
 			else:
 				class_num[cls] = 1
 			color = colors[LoadImagesAndLabels.class_name.index(cls)]
-			# 绘制目标框
-			cv2.rectangle(img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color, 2)
+
+			nms_dets_.append((bbox[0], bbox[1],bbox[2], bbox[3],conf))
 			# 绘制标签&置信度
-			txt = '{}:{:.1f}'.format(cls, conf)
-			font = cv2.FONT_HERSHEY_SIMPLEX
-			txt_size = cv2.getTextSize(txt, font, 0.5, 2)[0]
-			cv2.rectangle(img, (bbox[0], bbox[1] - txt_size[1] - 2), (bbox[0] + txt_size[0], bbox[1] - 2), color, -1)
-			cv2.putText(img, txt, (bbox[0], bbox[1] - 2), font, 0.5, (255, 255, 255), thickness=1, lineType=cv2.LINE_AA)
+			if nms_flag == False:
+				label_ = '{}:{:.1f}'.format(cls, conf)
+				plot_one_box(bbox, img, color=color, label=label_, line_thickness=2)
 		if flag_write_xml:
 			writer.save(targetFile = path_det_+file_.replace('.jpg','.xml'))
+		if nms_flag and len(nms_dets_)>0:
+			#nms
+			keep_ = py_cpu_nms(np.array(nms_dets_), thresh=0.8)
+			print('keep_ : {}'.format(keep_))
+			for i in range(len(nms_dets_)):
+				if i in keep_:
+					bbox_conf = nms_dets_[i]
+					bbox_ = int(bbox_conf[0]),int(bbox_conf[1]),int(bbox_conf[2]),int(bbox_conf[3])
+					label_ = 'nms_Hand:{:.2f}'.format(bbox_conf[4])
+					plot_one_box(bbox_, img, color=(55,125,255), label=label_, line_thickness=2)
+
 
 		cv2.namedWindow("heatmap", 0)
 		cv2.imshow("heatmap", np.hstack(hm[0].cpu().numpy()))
@@ -321,13 +377,16 @@ def demo(model_path,img_dir):
 			break
 
 if __name__ == '__main__':
-	model_path = './model_save/model_hand_last.pth'# 模型路径
+	model_arch = 'resnet_18'
+	model_path = './model_save/model_hand_last_'+model_arch+'.pth'# 模型路径
 	gt_annot_path = './hand_detect_gt.json'
 	img_dir = '../done/'# 测试集
+
+	nms_flag = True
 
 	Eval = False
 
 	if Eval:
-		eval(model_path,img_dir,gt_annot_path)
+		eval(model_arch,model_path,img_dir,gt_annot_path)
 	else:
-		demo(model_path,img_dir)
+		inference(model_arch,nms_flag,model_path,img_dir)

@@ -18,8 +18,8 @@ def main(opt):
         os.mkdir(path_save_model_)
 
     torch.manual_seed(opt.seed)
-    torch.backends.cudnn.benchmark = not opt.not_cuda_benchmark and not opt.test
-    opt = opts().update_dataset_info_and_set_heads(opt, LoadImagesAndLabels)
+    torch.backends.cudnn.benchmark = True
+    # opt = opts().update_dataset_info_and_set_heads(opt, LoadImagesAndLabels)
 
     os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     cuda = torch.cuda.is_available()
@@ -28,22 +28,24 @@ def main(opt):
     chunk_sizes_ = [8]
     gpus_ = [0]
     # resnet_18 ,resnet_34 ,resnet_50,resnet_101,resnet_152
-    model_arch = 'resnet_34'
+    model_arch = 'resnet_18'
     print('Creating model...')
+    head_conv_ = 64
 
     num_layer = int(model_arch.split("_")[1])
     num_classes = 1
     heads_ = {'hm': num_classes, 'wh': 2, 'reg': 2}
 
     print('heads : {}'.format(heads_))
-    model = resnet(num_layers=num_layer, heads=heads_,  head_conv=64, pretrained=True)  # res_18
+    model = resnet(num_layers=num_layer, heads=heads_,  head_conv=head_conv_, pretrained=True)  # res_18
     # print(model)
 
 
     batch_size_ = 16
     num_workers_ = 4
     learning_rate_ = 1.25e-4
-    path_load_model_ = './model_save/model_hand_last.pth'
+    path_load_model_ = './model_save/model_hand_last_'+model_arch+'.pth'
+
     # path_load_model_ = ''
     lr_step_ = [190,220]
 
@@ -81,9 +83,9 @@ def main(opt):
     for epoch in range(start_epoch + 1, opt.num_epochs + 1):
         log_dict_train, _ = trainer.train(epoch, train_loader)
 
-        save_model(path_save_model_ + 'model_hand_last.pth', epoch, model, optimizer)
+        save_model(path_save_model_ + 'model_hand_last_'+model_arch+'.pth', epoch, model, optimizer)
         if epoch%1==0:
-            save_model(path_save_model_ + 'hand_epoch{}.pth'.format(epoch), epoch, model, optimizer)
+            save_model(path_save_model_ + 'hand_'+model_arch+'_epoch_'+'{}.pth'.format(epoch), epoch, model, optimizer)
 
         if epoch in lr_step_:
             save_model(path_save_model_ + 'model_hand_{}.pth'.format(epoch), epoch, model, optimizer)
