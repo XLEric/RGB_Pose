@@ -4,6 +4,8 @@ from __future__ import print_function
 
 import numpy as np
 from .image import transform_preds
+# from .ddd_utils import ddd2locrot
+
 
 def get_pred_depth(depth):
   return depth
