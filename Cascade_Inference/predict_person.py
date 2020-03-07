@@ -1,7 +1,7 @@
 #coding:utf-8
 # date:2019-08
 # Author: X.li
-# function: predict
+# function: predict person
 
 import argparse
 import time

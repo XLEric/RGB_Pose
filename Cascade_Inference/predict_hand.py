@@ -1,7 +1,7 @@
 #-*-coding:utf-8-*-
 # date:2020-03-02
 # Author: X.li
-# function: inference backbone only support resnet
+# function: hand detect : inference backbone only support resnet
 
 import os
 import glob

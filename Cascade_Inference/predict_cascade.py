@@ -1,7 +1,7 @@
 #coding:utf-8
-# date:2019-08
+# date:2020-03-07
 # Author: X.li
-# function: predict
+# function: cascade predict
 
 import argparse
 import time
