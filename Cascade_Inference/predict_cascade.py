@@ -3,10 +3,10 @@
 # Author: X.li
 # function: cascade predict
 
-import argparse
-import time
 import os
 # os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+import argparse
+import time
 import torch
 import cv2
 import numpy as np
