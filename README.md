@@ -12,7 +12,7 @@ example(Hand Detect):
 example(HandPose Estimation):  
 ![hand](https://github.com/XiangLiK/RGB_HandPose/raw/master/samples/handpose.png)  
 ## Vedio Samples
-![image](https://github.com/XiangLiK/RGB_HandPose/raw/master/Gif/Video_Detect.gif)  
+![image](https://github.com/XiangLiK/RGB_HandPose/raw/master/GIF/Video_Detect.gif)  
 
 ## Requirements  
 
