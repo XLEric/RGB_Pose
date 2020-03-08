@@ -12,6 +12,8 @@ example(Hand Detect):
 example(HandPose Estimation):  
 ![hand](https://github.com/XiangLiK/RGB_HandPose/raw/master/samples/handpose.png)  
 
+![image](https://github.com/XiangLiK/RGB_HandPose/raw/master/Gif/vedio_detect.gif)  
+
 ## Requirements  
 
 * Python 3.6  
